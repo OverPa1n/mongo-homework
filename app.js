@@ -200,7 +200,6 @@ async function getWorstScore() {
             {$group: {_id: {name: '$name', scores: '$scores'}}},
             {$sort: {'_id.scores': -1}}
 
-
         ]).toArray()
         // console.log(result)
     } catch (e) {
@@ -214,8 +213,8 @@ async function getBestAndWorstScore() {
         const result = await studentsCollection.aggregate([
             {$match: {scores: {$elemMatch: {type: 'quiz', score: {$gte: 90}}}}},
             {$match: {scores: {$elemMatch: {type: 'homework', score: {$lte: 65}}}}},
-            {$group: {_id: {name: '$name', score: '$scores'}}},
-            {$sort: {score: 1}}
+            {$group: {_id: {name: '$name'}}},
+            {$sort: {'_id.score': 1}}
 
         ]).toArray()
         // console.log(result)
@@ -285,10 +284,10 @@ async function setMarks() {
 // - b => (between 40 and 60)
 // - c => (between 60 and 100)
 
+//Я скоріш за все не до кінця зрозумів це завдання
 async function getAverageForAllStudents() {
     try {
         const result = await studentsCollection.aggregate([
-            {$match: {}},
             {$group: {_id: {name: '$name', score: '$scores', avgScore: {$avg: '$scores.score'}}}},
 
         ]).toArray()
