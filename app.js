@@ -196,9 +196,10 @@ async function getWorstScore() {
         const result = await studentsCollection.aggregate([
             {$unwind: "$scores"},
             {$match: {'scores.type': 'homework'}},
-            {$match: {'scores.score': {$lt: 65}}},
-            {$group: {_id: {name: '$name', scores: '$scores'}}},
-            {$sort: {'_id.scores': -1}}
+            {$group:{_id: {name: '$name',worstScore: "$scores.score" }}},
+            {$sort: {'_id.worstScore': 1}},
+            {$limit: 10},
+            {$sort: {'_id.worstScore': -1}},
 
         ]).toArray()
         // console.log(result)
@@ -214,7 +215,7 @@ async function getBestAndWorstScore() {
             {$match: {scores: {$elemMatch: {type: 'quiz', score: {$gte: 90}}}}},
             {$match: {scores: {$elemMatch: {type: 'homework', score: {$lte: 65}}}}},
             {$group: {_id: {name: '$name'}}},
-            {$sort: {'_id.score': 1}}
+            {$sort: {'_id.name': 1}}
 
         ]).toArray()
         // console.log(result)
@@ -268,11 +269,11 @@ async function deleteStudents() {
 // - Mark students that have quiz score => 80
 async function setMarks() {
     try {
-        const result = await studentsCollection.updateMany({
-            scores: {$elemMatch: {type: 'quiz', score: {$gte: 80}}}
-        }, {
-            $set: {'mark': 'c'}
-        })
+        const result = await studentsCollection.aggregate([
+            {$unwind: "$scores"},
+            {$match: {'scores.type': 'quiz', 'scores.score': {$gte: 80}}},
+            {$addFields: {'scores.mark': 'c'}}
+        ])
 
     } catch (e) {
         console.log(e)
@@ -284,11 +285,21 @@ async function setMarks() {
 // - b => (between 40 and 60)
 // - c => (between 60 and 100)
 
-//Я скоріш за все не до кінця зрозумів це завдання
+
 async function getAverageForAllStudents() {
     try {
         const result = await studentsCollection.aggregate([
             {$group: {_id: {name: '$name', score: '$scores', avgScore: {$avg: '$scores.score'}}}},
+            {$project: {
+                    '_id.name': 1,
+                    '_id.score': 1,
+                    '_id.avgScore': 1,
+                    mark: {
+                        $cond: {
+                            if:{ $lte:['$_id.avgScore', 40]},then: 'a',
+                            else:{ $cond: {if:{$gt:['$_id.avgScore', 60]}, then: 'c', else: 'b'} }
+                        }},
+                } },
 
         ]).toArray()
     } catch (e) {
